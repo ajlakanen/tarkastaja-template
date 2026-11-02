@@ -103,11 +103,45 @@
   [hidden] { display: none !important; }
   .error { color: #a23b2a; font-size: 0.9rem; margin-top: 8px; min-height: 1.2em; }
   .copied { color: var(--accent); font-size: 0.9rem; }
+
+  /* Johdanto ja viestimalli */
+  .intro { color: var(--muted); font-size: 0.95rem; margin: 0 0 12px; }
+  .intro a { color: var(--accent); }
+  details.malli { margin: 0 0 24px; font-size: 0.9rem; }
+  details.malli summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  details.malli pre {
+    margin: 10px 0 0; padding: 14px 16px;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    white-space: pre-wrap; font: inherit; color: var(--text);
+  }
 </style>
 </head>
 <body>
 <main>
   <h1>Etsin tarkastajaa syventävälle tutkielmalle</h1>
+  <p class="intro">Tällä lomakkeella voit muotoilla valmiin sähköpostiviestin, jolla pyydät tarkastajaa syventävälle tutkielmalle. Esimerkin valmiista viestistä näet <a href="#viestimalli" id="naytaMalli">täällä</a>.</p>
+  <details class="malli" id="viestimalli">
+    <summary>Esimerkki valmiista viestistä</summary>
+    <pre>Hei,
+
+etsin tarkastajaa pro gradu -tutkielmalle (tietojenkäsittelytiede) "Suurten kielimallien käyttö ohjelmoinnin opetuksessa" (liitteenä). Työ on kirjoitettu suomeksi. Työn abstrakti on alla.
+
+Olisiko sinulla mahdollisuutta tarkastaa työ? Vaihtoehtoisesti olisiko sinulla ehdotusta kuka työlle olisi sopiva tarkastaja?
+
+Työ on jätetty tarkastettavaksi 3.11.2026 joten tarkastuksen deadline on 3.12.2026.
+
+Työn ohjasivat allekirjoittanut ja Pekka Peruskäyttäjä.
+
+Turnitin-analyysi on tehty, ja voin sen toimittaa sinulle jos haluat.
+
+Olisi hienoa jos ehtisit vastaamaan alkuviikon aikana. Kiitos etukäteen!
+
+Maija Meikäläinen
+
+TIIVISTELMÄ
+
+Tutkielmassa selvitetään, miten suuria kielimalleja voidaan hyödyntää ohjelmoinnin peruskurssien opetuksessa ja millaisia vaikutuksia niillä on opiskelijoiden oppimistuloksiin. Aineisto kerättiin kyselyllä ja haastatteluilla syksyllä 2026.</pre>
+  </details>
   <div class="step-count" id="stepCount"></div>
 
   <form id="wizard" autocomplete="off">
@@ -497,6 +531,12 @@
     updateDeadlinePreview(); show(1);
   });
   pvm.addEventListener('input', updateDeadlinePreview);
+  $('naytaMalli').addEventListener('click', (e) => {
+    e.preventDefault();
+    const d = $('viestimalli');
+    d.open = true;
+    d.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
   const NIMI_AVAIN = 'tarkastajapyynto.lahettaja';
   try { lahettaja.value = localStorage.getItem(NIMI_AVAIN) || ''; } catch (e) {}
   lahettaja.addEventListener('input', () => {
