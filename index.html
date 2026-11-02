@@ -1,0 +1,579 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tarkastajapyyntö</title>
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --card: #ffffff;
+    --text: #1f1f1d;
+    --muted: #6b6a64;
+    --line: #dcdad2;
+    --accent: #2f5d50;
+    --accent-ink: #ffffff;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 32px 16px;
+  }
+  main {
+    max-width: 680px;
+    margin: 0 auto;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 28px 32px;
+  }
+  h1 { font-size: 1.25rem; margin: 0 0 4px; }
+  .step-count { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+  .step { display: none; }
+  .step.active { display: block; }
+  label { display: block; font-weight: 600; margin-bottom: 6px; }
+  .hint { color: var(--muted); font-size: 0.9rem; margin: 0 0 10px; }
+  input[type=text], input[type=date], textarea {
+    width: 100%;
+    font: inherit;
+    padding: 10px 12px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--text);
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: var(--accent); }
+  textarea { min-height: 220px; resize: vertical; }
+  #tulos { min-height: 460px; }
+  .deadline-preview { color: var(--muted); font-size: 0.9rem; margin-top: 8px; }
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-top: 10px; flex-wrap: wrap; }
+  .toolbar .hint { margin: 0; }
+
+  /* Valintalistat (checkbox / radio) */
+  .choice { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-weight: 400; margin: 0; cursor: pointer; }
+  .choice input { width: 18px; height: 18px; margin: 0; accent-color: var(--accent); }
+  .subfield { margin-top: 12px; }
+  .subfield label { font-weight: 400; color: var(--muted); font-size: 0.9rem; }
+
+  /* Automaattitäydennys: ehdotus näkyy harmaana kentän sisällä kirjoitetun tekstin perässä */
+  .ghost-wrap { position: relative; }
+  .ghost-wrap input { position: relative; background: transparent; }
+  .ghost {
+    position: absolute; inset: 0;
+    padding: 10px 12px; border: 1px solid transparent;
+    font: inherit; line-height: 1.5; white-space: pre; overflow: hidden;
+    pointer-events: none; background: #fff; border-radius: 6px;
+  }
+  .ghost #ghostTyped { color: transparent; }
+  .ghost #ghostRest { color: var(--muted); }
+
+  /* Yhteenveto vastauksista, joista jokaista voi muokata */
+  .summary { border: 1px solid var(--line); border-radius: 8px; margin: 0 0 20px; }
+  .summary-row {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 10px 14px; border-top: 1px solid var(--line);
+  }
+  .summary-row:first-child { border-top: 0; }
+  .summary-row .k { color: var(--muted); font-size: 0.85rem; width: 110px; flex: none; padding-top: 2px; }
+  .summary-row .v {
+    flex: 1; min-width: 0;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .summary-row button { padding: 3px 10px; font-size: 0.85rem; flex: none; }
+
+  .actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 24px; flex-wrap: wrap; }
+  .actions .right { display: flex; gap: 10px; margin-left: auto; align-items: center; }
+  button {
+    font: inherit;
+    padding: 9px 18px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--text);
+    cursor: pointer;
+  }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  button:hover { filter: brightness(0.96); }
+  button:focus { outline: none; }
+  button:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--accent); }
+  [hidden] { display: none !important; }
+  .error { color: #a23b2a; font-size: 0.9rem; margin-top: 8px; min-height: 1.2em; }
+  .copied { color: var(--accent); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Etsin tarkastajaa syventävälle tutkielmalle</h1>
+  <div class="step-count" id="stepCount"></div>
+
+  <form id="wizard" autocomplete="off">
+
+    <section class="step" data-step="1">
+      <label>Onko kyseessä pro gradu -tutkielma vai diplomityö?</label>
+      <label class="choice"><input type="radio" name="tyyppi" value="gradu" checked> pro gradu -tutkielma</label>
+      <label class="choice"><input type="radio" name="tyyppi" value="diplomityo"> diplomityö</label>
+      <div class="subfield">
+        <label for="oppiaine">Oppiaine (tulee viestiin sulkeisiin työn tyypin perään). </label>
+        <div class="ghost-wrap">
+          <div class="ghost" aria-hidden="true"><span id="ghostTyped"></span><span id="ghostRest"></span></div>
+          <input type="text" id="oppiaine">
+        </div>
+      </div>
+      <div class="error" id="err1"></div>
+    </section>
+
+    <section class="step" data-step="2">
+      <label for="nimi">Työn nimi</label>
+      <p class="hint">Kirjoita työn nimi sellaisena kuin se on kansilehdellä.</p>
+      <input type="text" id="nimi" placeholder="Esim. Ohjelmoinnin oppimisen esteet lukiossa">
+      <div class="error" id="err2"></div>
+    </section>
+
+    <section class="step" data-step="3">
+      <label>Onko työ kirjoitettu suomeksi vai englanniksi?</label>
+      <label class="choice"><input type="radio" name="kieli" value="suomeksi" checked> suomeksi</label>
+      <label class="choice"><input type="radio" name="kieli" value="englanniksi"> englanniksi</label>
+      <div class="error" id="err3"></div>
+    </section>
+
+    <section class="step" data-step="4">
+      <label for="pvm">Milloin työ on jätetty tarkastettavaksi?</label>
+      <p class="hint" id="pvmHint">Tarkastuksen deadline lasketaan automaattisesti kuukauden päähän.</p>
+      <input type="date" id="pvm">
+      <div class="deadline-preview" id="deadlinePreview"></div>
+      <label class="choice"><input type="checkbox" id="eiJatetty"> Työtä ei ole vielä jätetty tarkastettavaksi</label>
+      <div class="error" id="err4"></div>
+    </section>
+
+    <section class="step" data-step="5">
+      <label>Ketkä ohjasivat työn?</label>
+      <p class="hint">Lause "Työn ohjasi …" muotoillaan valinnan mukaan.</p>
+      <label class="choice"><input type="checkbox" id="minaOhjaaja" checked> Minä itse (allekirjoittanut)</label>
+      <div class="subfield">
+        <label for="muutOhjaajat">Muut ohjaajat, nimet pilkulla eroteltuna (voi jättää tyhjäksi)</label>
+        <input type="text" id="muutOhjaajat" placeholder="Esim. Maija Meikäläinen, Matti Virtanen">
+      </div>
+      <div class="error" id="err5"></div>
+    </section>
+
+    <section class="step" data-step="6">
+      <label>Onko Turnitin-tarkastus tehty?</label>
+      <label class="choice"><input type="radio" name="turnitin" value="kylla" checked> kyllä</label>
+      <label class="choice"><input type="radio" name="turnitin" value="ei"> ei</label>
+      <div class="error" id="err6"></div>
+    </section>
+
+    <section class="step" data-step="7">
+      <label>Milloin toivot vastausta?</label>
+      <p class="hint">Täydentää lausetta "Olisi hienoa jos ehtisit vastaamaan …".</p>
+      <label class="choice"><input type="radio" name="vastaus" value="alkuviikon aikana" checked> alkuviikon aikana</label>
+      <label class="choice"><input type="radio" name="vastaus" value="lähipäivinä"> lähipäivinä</label>
+      <label class="choice"><input type="radio" name="vastaus" value="tämän viikon aikana"> tämän viikon aikana</label>
+      <label class="choice"><input type="radio" name="vastaus" value="__muu"> muu:</label>
+      <div class="subfield">
+        <input type="text" id="vastausMuu" placeholder="Esim. ensi viikon alkuun mennessä">
+      </div>
+      <div class="error" id="err7"></div>
+    </section>
+
+    <section class="step" data-step="8">
+      <label for="lahettaja">Nimesi</label>
+      <p class="hint">Tulee viestin allekirjoitukseksi. Muistetaan tässä selaimessa seuraavaa kertaa varten.</p>
+      <input type="text" id="lahettaja" autocomplete="name" placeholder="Etunimi Sukunimi">
+      <div class="error" id="err8"></div>
+    </section>
+
+    <section class="step" data-step="9">
+      <label for="tiivistelma">Työn tiivistelmä</label>
+      <p class="hint">Liitä tiivistelmä sellaisenaan. Se tulee viestin loppuun otsikon TIIVISTELMÄ alle.</p>
+      <textarea id="tiivistelma"></textarea>
+      <div class="toolbar">
+        <button type="button" id="siisti">Siisti rivinvaihdot ja tavuviivat</button>
+        <span class="hint" id="siistiMsg"></span>
+      </div>
+      <div class="error" id="err9"></div>
+    </section>
+
+    <section class="step" data-step="10">
+      <label>Vastauksesi</label>
+      <div class="summary">
+        <div class="summary-row">
+          <span class="k">Työn tyyppi</span>
+          <span class="v" id="sumTyyppi"></span>
+          <button type="button" data-goto="1">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Oppiaine</span>
+          <span class="v" id="sumOppiaine"></span>
+          <button type="button" data-goto="1">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Työn nimi</span>
+          <span class="v" id="sumNimi"></span>
+          <button type="button" data-goto="2">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Kieli</span>
+          <span class="v" id="sumKieli"></span>
+          <button type="button" data-goto="3">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Jätetty</span>
+          <span class="v" id="sumPvm"></span>
+          <button type="button" data-goto="4">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Ohjaajat</span>
+          <span class="v" id="sumOhjaajat"></span>
+          <button type="button" data-goto="5">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Turnitin</span>
+          <span class="v" id="sumTurnitin"></span>
+          <button type="button" data-goto="6">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Vastaus</span>
+          <span class="v" id="sumVastaus"></span>
+          <button type="button" data-goto="7">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Allekirjoitus</span>
+          <span class="v" id="sumLahettaja"></span>
+          <button type="button" data-goto="8">Muokkaa</button>
+        </div>
+        <div class="summary-row">
+          <span class="k">Tiivistelmä</span>
+          <span class="v" id="sumTiivistelma"></span>
+          <button type="button" data-goto="9">Muokkaa</button>
+        </div>
+      </div>
+
+      <label for="tulos">Valmis viesti</label>
+      <p class="hint">Voit myös muokata tekstiä suoraan tässä ennen kopiointia.</p>
+      <textarea id="tulos"></textarea>
+    </section>
+
+    <div class="actions">
+      <button type="button" id="back">Edellinen</button>
+      <div class="right">
+        <span class="copied" id="copiedMsg"></span>
+        <button type="button" id="restart" hidden>Aloita alusta</button>
+        <button type="button" class="primary" id="next">Seuraava</button>
+        <button type="button" class="primary" id="copy" hidden>Kopioi leikepöydälle</button>
+      </div>
+    </div>
+  </form>
+</main>
+
+<script>
+(function () {
+  const TOTAL = 10;
+  let step = 1;
+  let editing = false; // true kun yksittäistä kohtaa muokataan yhteenvedosta käsin
+
+  const $ = (id) => document.getElementById(id);
+  const nimi = $('nimi'), oppiaine = $('oppiaine'), lahettaja = $('lahettaja'), pvm = $('pvm'), tiivistelma = $('tiivistelma'), tulos = $('tulos');
+  const eiJatetty = $('eiJatetty');
+  const minaOhjaaja = $('minaOhjaaja'), muutOhjaajat = $('muutOhjaajat'), vastausMuu = $('vastausMuu');
+  const back = $('back'), next = $('next'), copy = $('copy'), restart = $('restart');
+  const copiedMsg = $('copiedMsg');
+
+  function toISODate(d) {
+    const p = (n) => String(n).padStart(2, '0');
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+  }
+
+  // Palauttaa null, jos kenttä on tyhjä.
+  function parseISODate(s) {
+    if (!s) return null;
+    const parts = s.split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  // Suomalainen muoto: 2.11.2026
+  function fiDate(d) {
+    return d.getDate() + '.' + (d.getMonth() + 1) + '.' + d.getFullYear();
+  }
+
+  // Lisää kuukausi. Jos kohdekuukaudessa ei ole vastaavaa päivää (esim. 31.1. -> 28.2.),
+  // käytetään kohdekuukauden viimeistä päivää.
+  function addOneMonth(d) {
+    const target = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    const lastDay = new Date(target.getFullYear(), target.getMonth() + 1, 0).getDate();
+    target.setDate(Math.min(d.getDate(), lastDay));
+    return target;
+  }
+
+  // "A", "A ja B", "A, B ja C"
+  function joinNames(names) {
+    if (names.length <= 1) return names.join('');
+    return names.slice(0, -1).join(', ') + ' ja ' + names[names.length - 1];
+  }
+
+  // Siistii PDF:stä kopioidun tekstin: yhdistää kappaleen sisäiset rivit ja poistaa
+  // rivinloppuiset tavuviivat. Tyhjä rivi säilyy kappaleen rajana.
+  // Suomen yhdyssanaviiva säilyy, kun sama vokaali kohtaa (osa-alue, linja-auto).
+  function cleanAbstract(text) {
+    const paragraphs = text.replace(/\r\n?/g, '\n').replace(/­/g, '').split(/\n[ \t]*\n+/);
+    return paragraphs.map((p) => {
+      const lines = p.split('\n').map((l) => l.trim()).filter(Boolean);
+      let out = '';
+      lines.forEach((line, i) => {
+        if (i === 0) { out = line; return; }
+        const m = out.match(/([A-Za-zÀ-ÿ])-$/);
+        if (m) {
+          const prev = m[1].toLowerCase();
+          const nextCh = line.charAt(0).toLowerCase();
+          const sameVowel = prev === nextCh && 'aeiouyäö'.includes(prev);
+          out = sameVowel ? out + line : out.slice(0, -1) + line;
+        } else if (/[–—]$/.test(out)) {
+          out += line;
+        } else {
+          out += ' ' + line;
+        }
+      });
+      return out.replace(/[ \t]{2,}/g, ' ');
+    }).filter(Boolean).join('\n\n');
+  }
+
+  function radioValue(name) {
+    const el = document.querySelector('input[name="' + name + '"]:checked');
+    return el ? el.value : '';
+  }
+
+  function otherSupervisors() {
+    return muutOhjaajat.value.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
+  // "Työn ohjasi allekirjoittanut." / "Työn ohjasivat allekirjoittanut ja Maija M." / "Työn ohjasi Maija M."
+  function supervisorSentence() {
+    const names = (minaOhjaaja.checked ? ['allekirjoittanut'] : []).concat(otherSupervisors());
+    const verb = names.length === 1 ? 'ohjasi' : 'ohjasivat';
+    return 'Työn ' + verb + ' ' + joinNames(names) + '.';
+  }
+
+  // "pro gradu -tutkielmalle (tietojenkäsittelytiede)" / "diplomityölle (tietotekniikka)"
+  function thesisWord() {
+    const type = radioValue('tyyppi') === 'diplomityo' ? 'diplomityölle' : 'pro gradu -tutkielmalle';
+    return type + ' (' + oppiaine.value.trim() + ')';
+  }
+
+  function submissionSentence() {
+    if (eiJatetty.checked) {
+      return 'Opiskelija jättää työn tarkastettavaksi Vasarassa lähipäivinä.';
+    }
+    const date = parseISODate(pvm.value);
+    return 'Työ on jätetty tarkastettavaksi ' + fiDate(date) + ' joten tarkastuksen deadline on ' + fiDate(addOneMonth(date)) + '.';
+  }
+
+  function turnitinSentence() {
+    return radioValue('turnitin') === 'kylla'
+      ? 'Turnitin-analyysi on tehty, ja voin sen toimittaa sinulle jos haluat.'
+      : 'Turnitin-analyysia ei ole vielä tehty, mutta halutessasi voin toimittaa sen sinulle kun se valmistuu.';
+  }
+
+  function replyWish() {
+    const v = radioValue('vastaus');
+    return v === '__muu' ? vastausMuu.value.trim() : v;
+  }
+
+  function buildMessage() {
+    return [
+      'Hei,',
+      '',
+      'etsin tarkastajaa ' + thesisWord() + ' "' + nimi.value.trim() + '" (liitteenä). Työ on kirjoitettu ' + radioValue('kieli') + '. Työn abstrakti on alla.',
+      '',
+      'Olisiko sinulla mahdollisuutta tarkastaa työ? Vaihtoehtoisesti olisiko sinulla ehdotusta kuka työlle olisi sopiva tarkastaja?',
+      '',
+      submissionSentence(),
+      '',
+      supervisorSentence(),
+      '',
+      turnitinSentence(),
+      '',
+      'Olisi hienoa jos ehtisit vastaamaan ' + replyWish() + '. Kiitos etukäteen!',
+      '',
+      lahettaja.value.trim(),
+      '',
+      'TIIVISTELMÄ',
+      '',
+      tiivistelma.value.trim()
+    ].join('\n');
+  }
+
+  function updateDeadlinePreview() {
+    const el = $('deadlinePreview');
+    const date = parseISODate(pvm.value);
+    el.textContent = date ? 'Jätetty ' + fiDate(date) + ', tarkastuksen deadline ' + fiDate(addOneMonth(date)) : '';
+  }
+
+  function validate(s) {
+    const err = $('err' + s);
+    if (err) err.textContent = '';
+    if (s === 1 && !radioValue('tyyppi')) { err.textContent = 'Valitse työn tyyppi.'; return false; }
+    if (s === 1 && !oppiaine.value.trim()) { err.textContent = 'Anna oppiaine.'; return false; }
+    if (s === 2 && !nimi.value.trim()) { err.textContent = 'Anna työn nimi.'; return false; }
+    if (s === 3 && !radioValue('kieli')) { err.textContent = 'Valitse kieli.'; return false; }
+    if (s === 4 && !eiJatetty.checked && !parseISODate(pvm.value)) { err.textContent = 'Valitse päivämäärä.'; return false; }
+    if (s === 5 && !minaOhjaaja.checked && otherSupervisors().length === 0) {
+      err.textContent = 'Valitse itsesi tai anna vähintään yksi nimi.'; return false;
+    }
+    if (s === 6 && !radioValue('turnitin')) { err.textContent = 'Valitse kyllä tai ei.'; return false; }
+    if (s === 7 && !replyWish()) { err.textContent = 'Kirjoita toive vastausajasta.'; return false; }
+    if (s === 8 && !lahettaja.value.trim()) { err.textContent = 'Anna nimesi.'; return false; }
+    if (s === 9 && !tiivistelma.value.trim()) { err.textContent = 'Liitä tiivistelmä.'; return false; }
+    return true;
+  }
+
+  function fillSummary() {
+    $('sumTyyppi').textContent = radioValue('tyyppi') === 'diplomityo' ? 'diplomityö' : 'pro gradu -tutkielma';
+    $('sumOppiaine').textContent = oppiaine.value.trim();
+    $('sumNimi').textContent = nimi.value.trim();
+    $('sumKieli').textContent = radioValue('kieli');
+    $('sumPvm').textContent = eiJatetty.checked
+      ? 'ei vielä jätetty'
+      : fiDate(parseISODate(pvm.value)) + ' (deadline ' + fiDate(addOneMonth(parseISODate(pvm.value))) + ')';
+    const names = (minaOhjaaja.checked ? ['minä'] : []).concat(otherSupervisors());
+    $('sumOhjaajat').textContent = joinNames(names);
+    $('sumTurnitin').textContent = radioValue('turnitin') === 'kylla' ? 'tehty' : 'ei tehty';
+    $('sumVastaus').textContent = replyWish();
+    $('sumLahettaja').textContent = lahettaja.value.trim();
+    $('sumTiivistelma').textContent = tiivistelma.value.trim();
+  }
+
+  function firstFocusable(s) {
+    const section = document.querySelector('.step[data-step="' + s + '"]');
+    return section.querySelector('input:checked, input, textarea');
+  }
+
+  function show(s) {
+    step = s;
+    document.querySelectorAll('.step').forEach((el) => {
+      el.classList.toggle('active', Number(el.dataset.step) === s);
+    });
+    copiedMsg.textContent = '';
+
+    if (s === TOTAL) {
+      editing = false;
+      $('stepCount').textContent = 'Valmis';
+      fillSummary();
+      tulos.value = buildMessage();
+    } else if (editing) {
+      $('stepCount').textContent = 'Muokkaus';
+    } else {
+      $('stepCount').textContent = 'Vaihe ' + s + ' / ' + (TOTAL - 1);
+    }
+
+    back.hidden = s === 1 || editing;
+    next.hidden = s === TOTAL;
+    next.textContent = editing ? 'Valmis' : 'Seuraava';
+    copy.hidden = s !== TOTAL;
+    restart.hidden = s !== TOTAL;
+
+    const target = s === TOTAL ? tulos : firstFocusable(s);
+    setTimeout(() => target && target.focus(), 0);
+  }
+
+  next.addEventListener('click', () => {
+    if (!validate(step)) return;
+    // Muokkaustilassa palataan suoraan viestiin, muuten seuraavaan vaiheeseen.
+    show(editing ? TOTAL : step + 1);
+  });
+  back.addEventListener('click', () => show(step - 1));
+  restart.addEventListener('click', () => {
+    nimi.value = ''; oppiaine.value = ''; tiivistelma.value = ''; pvm.value = toISODate(new Date());
+    eiJatetty.checked = false; updateSubmissionFields();
+    minaOhjaaja.checked = true; muutOhjaajat.value = ''; vastausMuu.value = '';
+    document.querySelector('input[name="tyyppi"]').checked = true;
+    document.querySelector('input[name="kieli"]').checked = true;
+    document.querySelector('input[name="turnitin"]').checked = true;
+    document.querySelector('input[name="vastaus"]').checked = true;
+    editing = false;
+    updateDeadlinePreview(); show(1);
+  });
+  pvm.addEventListener('input', updateDeadlinePreview);
+  const NIMI_AVAIN = 'tarkastajapyynto.lahettaja';
+  try { lahettaja.value = localStorage.getItem(NIMI_AVAIN) || ''; } catch (e) {}
+  lahettaja.addEventListener('input', () => {
+    try { localStorage.setItem(NIMI_AVAIN, lahettaja.value.trim()); } catch (e) {}
+  });
+  function updateSubmissionFields() {
+    const hide = eiJatetty.checked;
+    pvm.hidden = hide;
+    $('pvmHint').hidden = hide;
+    $('deadlinePreview').hidden = hide;
+  }
+  eiJatetty.addEventListener('change', updateSubmissionFields);
+
+  // Oppiaineen automaattitäydennys: ehdotus näytetään harmaana, nuoli oikealle hyväksyy.
+  const OPPIAINE_EHDOTUKSET = ['tietojenkäsittelytiede'];
+  function oppiaineSuggestion() {
+    const v = oppiaine.value;
+    const hit = OPPIAINE_EHDOTUKSET.find((e) => e.toLowerCase().startsWith(v.toLowerCase()) && e.length > v.length);
+    return hit ? v + hit.slice(v.length) : '';
+  }
+  function updateGhost() {
+    const full = oppiaineSuggestion();
+    $('ghostTyped').textContent = full ? oppiaine.value : '';
+    $('ghostRest').textContent = full ? full.slice(oppiaine.value.length) : '';
+  }
+  oppiaine.addEventListener('input', updateGhost);
+  oppiaine.addEventListener('focus', updateGhost);
+  oppiaine.addEventListener('blur', () => { $('ghostTyped').textContent = ''; $('ghostRest').textContent = ''; });
+  oppiaine.addEventListener('keydown', (e) => {
+    const full = oppiaineSuggestion();
+    const caretAtEnd = oppiaine.selectionStart === oppiaine.value.length;
+    if (e.key === 'ArrowRight' && full && caretAtEnd) {
+      e.preventDefault();
+      oppiaine.value = full;
+      updateGhost();
+    }
+  });
+
+  $('siisti').addEventListener('click', () => {
+    const before = tiivistelma.value;
+    tiivistelma.value = cleanAbstract(before);
+    $('siistiMsg').textContent = tiivistelma.value === before ? 'Ei muutettavaa.' : 'Siistitty.';
+    setTimeout(() => ($('siistiMsg').textContent = ''), 2500);
+  });
+
+  // Kirjoitus "muu"-kenttään valitsee automaattisesti "muu"-vaihtoehdon.
+  vastausMuu.addEventListener('input', () => {
+    document.querySelector('input[name="vastaus"][value="__muu"]').checked = true;
+  });
+
+  // "Muokkaa"-napit yhteenvedossa: muokataan vain kyseinen kohta ja palataan viestiin.
+  document.querySelectorAll('[data-goto]').forEach((b) => {
+    b.addEventListener('click', () => { editing = true; show(Number(b.dataset.goto)); });
+  });
+
+  // Enter siirtyy eteenpäin (ei tekstialueissa).
+  $('wizard').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && step < TOTAL) {
+      e.preventDefault(); next.click();
+    }
+  });
+
+  copy.addEventListener('click', async () => {
+    const text = tulos.value;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      tulos.select(); document.execCommand('copy');
+    }
+    copiedMsg.textContent = 'Kopioitu!';
+    setTimeout(() => (copiedMsg.textContent = ''), 2500);
+  });
+
+  pvm.value = toISODate(new Date());
+  updateDeadlinePreview();
+  show(1);
+})();
+</script>
+</body>
+</html>
